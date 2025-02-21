@@ -10,6 +10,7 @@ import (
 	"pp/internal/config"
 	"pp/internal/filetransfer"
 	"pp/internal/message"
+	"pp/internal/message/handlers"
 	"pp/internal/network"
 	"pp/internal/peer"
 )
@@ -38,10 +39,23 @@ func NewNode(cfg *config.Config, networkServer network.NetworkServer) (*Node, er
 		fileTransferManager: filetransfer.NewManager(cfg.DataDir),
 	}
 
-	//node.networkServer = network.NewServer(node.serverAddr, node.handleIncomingMessage, node.peerConnected, node.peerDisconnected) // 移除
 	networkServer.SetMessageHandler(node.handleIncomingMessage) // 设置消息处理函数
 	networkServer.SetConnectHandler(node.peerConnected)         // 设置连接处理函数
 	networkServer.SetDisconnectHandler(node.peerDisconnected)   // 设置断开连接处理函数
+
+	// Create handlers
+	pingHandler := handlers.NewPingHandler(node.serverAddr, node.SendMessage)
+	chatHandler := handlers.NewChatHandler()
+	fileRequestHandler := handlers.NewFileRequestHandler(node.fileTransferManager, node.serverAddr, node.SendMessage)
+	fileChunkHandler := handlers.NewFileChunkHandler(node.fileTransferManager)
+	fileMetadataHandler := handlers.NewFileMetadataHandler(node.fileTransferManager)
+
+	// Register handlers
+	node.MessageRouter.RegisterHandler("ping", pingHandler)
+	node.MessageRouter.RegisterHandler("chat", chatHandler)
+	node.MessageRouter.RegisterHandler("file_request", fileRequestHandler)
+	node.MessageRouter.RegisterHandler("file_chunk", fileChunkHandler)
+	node.MessageRouter.RegisterHandler("file_metadata", fileMetadataHandler)
 
 	return node, nil
 }

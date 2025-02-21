@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"pp/internal/config"
-	"pp/internal/filetransfer"
-	"pp/internal/message/handlers"
 	"pp/internal/network"
 	"pp/internal/node"
 	"strconv"
@@ -21,9 +19,6 @@ func main() {
 		PingInterval: 10,
 	}
 
-	// Create file transfer manager
-	fileTransferManager := filetransfer.NewManager(cfg.DataDir)
-
 	// Create network server
 	networkServer := network.NewServer(":" + strconv.Itoa(cfg.Port))
 
@@ -33,20 +28,6 @@ func main() {
 		log.Fatalf("Error creating node: %v", err)
 		return
 	}
-
-	// Create handlers
-	pingHandler := handlers.NewPingHandler(":"+strconv.Itoa(cfg.Port), node.SendMessage)
-	chatHandler := handlers.NewChatHandler()
-	fileRequestHandler := handlers.NewFileRequestHandler(fileTransferManager, ":"+strconv.Itoa(cfg.Port), node.SendMessage)
-	fileChunkHandler := handlers.NewFileChunkHandler(fileTransferManager)
-	fileMetadataHandler := handlers.NewFileMetadataHandler(fileTransferManager)
-
-	// Register handlers
-	node.MessageRouter.RegisterHandler("ping", pingHandler)
-	node.MessageRouter.RegisterHandler("chat", chatHandler)
-	node.MessageRouter.RegisterHandler("file_request", fileRequestHandler)
-	node.MessageRouter.RegisterHandler("file_chunk", fileChunkHandler)
-	node.MessageRouter.RegisterHandler("file_metadata", fileMetadataHandler)
 
 	// Start node
 	if err := node.Start(); err != nil {
