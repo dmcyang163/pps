@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect

@@ -1,0 +1,7 @@
+{
+    "port": 8080,
+    "seed_nodes": [],
+    "max_peers": 10,
+    "ping_interval": 30,
+    "data_dir": "./data"
+}

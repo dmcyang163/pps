@@ -3,42 +3,54 @@
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"pp/internal/config"
+	"pp/internal/message/handlers"
 	"pp/internal/network"
 	"pp/internal/node"
-	"strconv"
+	"syscall"
 )
 
 func main() {
 	// Load configuration
-	cfg := &config.Config{
-		Port:         8080,
-		MaxPeers:     10,
-		SeedNodes:    []string{},
-		DataDir:      "data",
-		PingInterval: 10,
+	cfg, err := config.LoadConfig("config.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Create network server
-	networkServer := network.NewServer(":" + strconv.Itoa(cfg.Port))
+	networkServer := network.NewServer(":" + fmt.Sprintf("%d", cfg.Port))
 
 	// Create node
-	node, err := node.NewNode(cfg, networkServer) // 传入接口
+	node, err := node.NewNode(cfg, networkServer)
 	if err != nil {
-		log.Fatalf("Error creating node: %v", err)
-		return
+		log.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Start node
+	//  创建 handlers，并将 eventManager 和其他依赖项传递给它们
+	pingHandler := handlers.NewPingHandler(node.EventManager, node.ServerAddr)
+	chatHandler := handlers.NewChatHandler()
+	fileRequestHandler := handlers.NewFileRequestHandler(node.FileTransferManager, node.ServerAddr, node.EventManager) // 这里的 sendMessage 需要修改，通过事件触发
+	fileChunkHandler := handlers.NewFileChunkHandler(node.FileTransferManager)
+	fileMetadataHandler := handlers.NewFileMetadataHandler(node.FileTransferManager)
+
+	//  注册 handlers 到 router
+	node.MessageRouter.RegisterHandler("ping", pingHandler)
+	node.MessageRouter.RegisterHandler("chat", chatHandler)
+	node.MessageRouter.RegisterHandler("file_request", fileRequestHandler)
+	node.MessageRouter.RegisterHandler("file_chunk", fileChunkHandler)
+	node.MessageRouter.RegisterHandler("file_metadata", fileMetadataHandler)
+
+	// Start the node
 	if err := node.Start(); err != nil {
-		log.Fatalf("Error starting node: %v", err)
-		return
+		log.Fatalf("Failed to start node: %v", err)
 	}
 
-	// Shutdown node on exit
-	defer node.Shutdown()
+	// Handle shutdown signals
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
-	// Wait for shutdown signal (e.g., Ctrl+C)
-	fmt.Println("Node running. Press Ctrl+C to exit.")
-	<-make(chan struct{})
+	<-signalCh // Wait for shutdown signal
+	node.Shutdown()
 }

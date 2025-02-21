@@ -1,14 +1,20 @@
 package message
 
+import (
+	"pp/internal/events"
+)
+
 // Router handles message routing to different handlers.
 type Router struct {
-	handlers map[string]Handler
+	handlers     map[string]Handler
+	eventManager *events.EventManager
 }
 
 // NewRouter creates a new Router instance.
-func NewRouter() *Router {
+func NewRouter(eventManager *events.EventManager) *Router {
 	return &Router{
-		handlers: make(map[string]Handler),
+		handlers:     make(map[string]Handler),
+		eventManager: eventManager,
 	}
 }
 

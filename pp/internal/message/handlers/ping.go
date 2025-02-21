@@ -2,28 +2,36 @@
 
 import (
 	"log"
+	"pp/internal/events"
 	"pp/internal/message"
-	// "pp/internal/node" //不再需要node
 )
 
 // PingHandler handles ping messages.
 type PingHandler struct {
-	serverAddr      string //需要serverAddr
-	sendMessageFunc func(addr string, msg message.Message) error
+	eventManager *events.EventManager
+	serverAddr   string // 需要 serverAddr
 }
 
 // NewPingHandler creates a new PingHandler instance.
-func NewPingHandler(serverAddr string, sendMessageFunc func(addr string, msg message.Message) error) *PingHandler {
-	return &PingHandler{serverAddr: serverAddr, sendMessageFunc: sendMessageFunc}
+func NewPingHandler(eventManager *events.EventManager, serverAddr string) *PingHandler {
+	return &PingHandler{
+		eventManager: eventManager,
+		serverAddr:   serverAddr,
+	}
 }
 
 // Handle processes a ping message.
 func (h *PingHandler) Handle(senderAddr string, msg message.Message) {
 	log.Printf("Received ping from %s", senderAddr)
 
-	// Respond with a pong
-	pongMsg := message.Message{Type: "pong", Data: "pong", Sender: h.serverAddr}
-	if err := h.sendMessageFunc(senderAddr, pongMsg); err != nil { //不再需要node
-		log.Printf("Error sending pong to %s: %v", senderAddr, err)
+	// 触发一个事件，通知 Node 发送 pong 消息
+	eventData := events.SendMessageEventData{
+		DestinationAddr: senderAddr,
+		Message: message.Message{
+			Type:   "pong",
+			Data:   "pong",
+			Sender: h.serverAddr,
+		},
 	}
+	h.eventManager.Publish(events.SendMessageEvent{EventData: eventData})
 }

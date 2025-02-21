@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -133,4 +134,36 @@ func getFileSize(filePath string) int64 {
 		return 0
 	}
 	return fileInfo.Size()
+}
+func (m *Manager) SendFile(addr string, filePath string) error {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// 获取文件名
+	fileName := filepath.Base(filePath)
+
+	// 创建连接
+	conn, err := net.Dial("tcp", addr) // 使用 TCP 连接
+	if err != nil {
+		return fmt.Errorf("failed to connect to %s: %w", addr, err)
+	}
+	defer conn.Close()
+
+	// 发送文件名
+	_, err = fmt.Fprintln(conn, fileName)
+	if err != nil {
+		return fmt.Errorf("failed to send filename: %w", err)
+	}
+
+	// 发送文件内容
+	_, err = io.Copy(conn, file)
+	if err != nil {
+		return fmt.Errorf("failed to send file content: %w", err)
+	}
+
+	return nil
 }
